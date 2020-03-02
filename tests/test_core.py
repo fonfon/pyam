@@ -59,6 +59,26 @@ def test_init_df_with_na_unit(test_df):
     pytest.raises(ValueError, IamDataFrame, data=df_with_na_columns)
 
 
+def test_nans_in_timeseries_export(test_df):
+    df = pd.DataFrame([
+        ['model_a', 'scen_a', 'World', 'Primary Energy', 'EJ/y', 1, 6.],
+        ['model_a', 'scen_a', 'World', 'Primary Energy|Coal', 'EJ/y', 0.5, 3],
+        ['model_a', 'scen_b', 'World', 'Primary Energy', 'EJ/y', 2, 7],
+    ],
+        columns=IAMC_IDX + [2005, 2010],
+    )
+    idf = IamDataFrame(data=df)
+    idf_ts_correct = idf.timeseries()
+    idf.data.at[0, 'unit'] = np.nan
+    idf_ts_incorrect = idf.timeseries()
+    first_row = idf_ts_incorrect.iloc[0]
+    # In the dataframe (idf.data), the 'NaN' is in the unit column.
+    # When using idf.timeseries(), the NaN entry moves from the unit to the
+    # year column (=the actual value).
+    # This assertion should be true but it fails:
+    assert idf.data.at[0, 'value'] == first_row[2005]
+
+
 def test_init_df_with_float_cols(test_pd_df):
     _test_df = test_pd_df.rename(columns={2005: 2005., 2010: 2010.})
     obs = IamDataFrame(_test_df).timeseries().reset_index()
